@@ -101,16 +101,16 @@ func (p plugin) Meta() meta.Meta {
 
 		ID: meta.ID{
 			ID:      "nori/mail",
-			Version: "1.0",
+			Version: "1.0.0",
 		},
 		Author: meta.Author{
 			Name: "Nori",
 			URI:  "https://nori.io",
 		},
 		Core: meta.Core{
-			VersionConstraint: ">=1.0, <2.0",
+			VersionConstraint: ">=1.0.0, <2.0.0",
 		},
-		Dependencies: []meta.Dependency{meta.PubSub.Dependency("1.0"), meta.Templates.Dependency("1.0")},
+		Dependencies: []meta.Dependency{meta.PubSub.Dependency("1.0.0"), meta.Templates.Dependency("1.0.0")},
 		Description: meta.Description{
 			Name: "Nori: Mail",
 		},
