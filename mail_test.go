@@ -11,80 +11,113 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program; if not, see <http://www.gnu.org/licenses/>.
+
 package main
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
+	"github.com/nori-io/mail/message"
+	cfg "github.com/nori-io/nori-common/config"
 	"github.com/nori-io/nori-common/interfaces"
-	"github.com/nori-io/nori-plugins/mail/message"
-	"github.com/nori-io/nori/core/config"
+	"github.com/nori-io/nori-common/mocks"
 	"github.com/nori-io/nori/core/plugins"
-	"github.com/nori-io/nori/core/plugins/mocks"
+	"github.com/nori-io/nori/version"
 )
 
 const (
 	testTemplate     = "TestTemplate"
 	testTemplateBody = "{{ .Test }}"
+
+	pathPubsubPlugin      = "../plugins/pubsub.so"
+	pathToTemplatesPlugin = "../plugins/templates.so"
 )
 
 func TestPackage(t *testing.T) {
-	assert := assert.New(t)
+	a := assert.New(t)
+	ctx := context.Background()
 
+	cfgManager := new(mocks.Manager)
+	config := new(mocks.Config)
+	logger := logrus.New()
+
+	// set configuration
+	cfgManager.On("Register", mock.Anything).Return(config)
+	config.On("String", "mail.host", mock.Anything).Return(stringFunc(""))
+	config.On("Int", "mail.port", mock.Anything).Return(intFunc(0))
+	config.On("String", "mail.user", mock.Anything).Return(stringFunc(""))
+	config.On("String", "mail.password", mock.Anything).Return(stringFunc(""))
+	config.On("Bool", "mail.ssl", mock.Anything).Return(boolFunc(false))
+	config.On("String", "mail.local_name", mock.Anything).Return(stringFunc(""))
+	config.On("Bool", "mail.worker.enabled", mock.Anything).Return(boolFunc(true))
+	config.On("Int", "mail.worker.pool_size", mock.Anything).Return(intFunc(1))
+	config.On("String", "mail.key", mock.Anything).Return(stringFunc(""))
+	config.On("String", subjectFromConfig, mock.Anything).Return(stringFunc(""))
+	config.On("String", fromEmailFromConfig, mock.Anything).Return(stringFunc(""))
+	config.On("String", fromNameFromConfig, mock.Anything).Return(stringFunc(""))
+
+	config.On("String", "template.dir", mock.Anything).Return(stringFunc("../templates"))
+	config.On("Bool", "template.watcher", mock.Anything).Return(boolFunc(false))
+	config.On("Bool", "template.save_in_file", mock.Anything).Return(boolFunc(false))
+
+	// mocking registry
 	registry := new(mocks.Registry)
+	registry.On("Logger", mock.Anything).Return(logger)
 
-	cfg := config.Config
-	cfg.SetDefault("mail.host", "")
-	cfg.SetDefault("mail.port", 0)
-	cfg.SetDefault("mail.user", "")
-	cfg.SetDefault("mail.password", "")
-	cfg.SetDefault("mail.ssl", false)
-	cfg.SetDefault("mail.worker.enabled", true)
-	cfg.SetDefault("mail.worker.pool_size", 1)
+	// create temp plugin manager with nil storage
+	v := version.NoriVersion(logger)
+	pluginManager := plugins.NewManager(nil, cfgManager, v, logger)
 
-	registry.On("Config").Return(cfg)
-	registry.On("Logger").Return(config.Log)
+	// need init and start plugin before getting instance
+	plug, err := pluginManager.AddFile(pathPubsubPlugin)
+	a.Nil(err)
 
-	pm := plugins.GetPluginManager(nil)
+	err = plug.Init(ctx, cfgManager)
+	a.Nil(err)
 
-	pm.Load("../plugins")
+	err = plug.Start(ctx, registry)
+	a.Nil(err)
 
-	pubsubPlugin := pm.Plugins()["pubsub"].Plugin()
-	assert.NotNil(pubsubPlugin)
+	pubsubInterface := plug.Instance()
 
-	err := pubsubPlugin.Start(nil, registry)
-	assert.Nil(err)
+	plug, err = pluginManager.AddFile(pathToTemplatesPlugin)
+	a.Nil(err)
 
-	pubsub := pubsubPlugin.GetInstance().(interfaces.PubSub)
+	err = plug.Init(ctx, cfgManager)
+	a.Nil(err)
 
-	registry.On("PubSub").Return(pubsub)
+	err = plug.Start(ctx, registry)
+	a.Nil(err)
 
-	templatesPlugin := pm.Plugins()["templates"].Plugin()
-	assert.NotNil(templatesPlugin)
+	templateInterface := plug.Instance()
 
-	err = templatesPlugin.Start(nil, registry)
-	assert.Nil(err)
+	// set instances of plugin to mocking registry
+	registry.On("PubSub").Return(pubsubInterface, nil)
+	registry.On("Templates").Return(templateInterface, nil)
 
-	templates := templatesPlugin.GetInstance().(interfaces.Templates)
-
-	registry.On("Templates").Return(templates)
-
-	templates.Set(testTemplate, testTemplateBody)
+	// don't forget to create test data
+	err = templateInterface.(interfaces.Templates).Set(testTemplate, testTemplateBody)
+	a.Nil(err)
 
 	p := new(plugin)
+	a.NotNil(p.Meta())
 
-	assert.NotNil(p.Meta())
-	assert.NotEmpty(p.Meta().GetDescription().Name)
+	err = p.Init(ctx, cfgManager)
+	a.Nil(err)
 
-	p.Start(nil, registry)
+	err = p.Start(ctx, registry)
+	a.Nil(err)
 
 	mail, ok := p.Instance().(interfaces.Mail)
-	assert.True(ok)
-	assert.NotNil(mail)
+	a.True(ok)
+	a.NotNil(mail)
 
 	msg := &message.Message{
 		ID:           1,
@@ -104,11 +137,23 @@ func TestPackage(t *testing.T) {
 	}
 
 	err = mail.Send(msg)
-	assert.Nil(err)
+	a.Nil(err)
 
 	time.Sleep(time.Second * 10)
 
 	err = p.Stop(nil, nil)
-	assert.Nil(err)
-	assert.Nil(p.Instance())
+	a.Nil(err)
+	a.Nil(p.Instance())
+}
+
+func stringFunc(s string) cfg.String {
+	return func() string { return s }
+}
+
+func boolFunc(b bool) cfg.Bool {
+	return func() bool { return b }
+}
+
+func intFunc(i int) cfg.Int {
+	return func() int { return i }
 }
