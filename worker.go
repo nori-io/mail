@@ -18,23 +18,22 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/gomail.v2"
 
-	"github.com/nori-io/mail/message"
 	"github.com/nori-io/nori-common/interfaces"
+
+	"github.com/nori-io/mail/message"
 )
 
 type mailWorker struct {
 	mailChannel chan mailChan
 	templColl   interfaces.Templates
-	logger      *logrus.Logger
+	logger      interfaces.Logger
 	cfg         config
 }
 
 type mailChan struct {
-	msg    *gomail.Message
-	fields logrus.Fields
+	msg *gomail.Message
 }
 
 const (
@@ -68,26 +67,21 @@ func (i instance) newWorkerService(cfg config) *mailWorker {
 					var count int = 1
 					for sender == nil {
 						sender, err = i.dialer.Dial()
-						i.logger.WithField("component", "sender").Info("Connection open")
+						i.logger.Info("Connection open")
 						if err != nil {
-							mailMessage.fields["component"] = "MailDialer.Dial"
 							if count <= 5 {
-								mailMessage.fields["attempt number"] = count
-								worker.logger.WithFields(mailMessage.fields).Error(err)
+								worker.logger.Errorf("attempt number = %d, %v", count, err)
 								count++
 								time.Sleep(3 * time.Second)
 							} else {
-								worker.logger.WithFields(mailMessage.fields).Fatal(err)
+								worker.logger.Error(err)
 							}
 						}
 					}
 					open = true
 				}
-				mailMessage.fields["component"] = "gomail.Send"
 				if err := gomail.Send(sender, mailMessage.msg); err != nil {
-					worker.logger.WithFields(mailMessage.fields).Error(err)
-				} else {
-					worker.logger.WithFields(mailMessage.fields).Info()
+					worker.logger.Error(err)
 				}
 			case <-time.After(30 * time.Second):
 				if open {
@@ -95,7 +89,7 @@ func (i instance) newWorkerService(cfg config) *mailWorker {
 						worker.logger.Error(err)
 					}
 					open = false
-					i.logger.WithField("component", "sender").Info("Connection close")
+					i.logger.Info("Connection close")
 					sender = nil
 				}
 			}
@@ -107,34 +101,21 @@ func (i instance) newWorkerService(cfg config) *mailWorker {
 func (w mailWorker) Publish(m interfaces.Message) error {
 	msg := new(message.Message)
 	if err := m.UnMarshal(msg); err != nil {
-		w.logger.WithFields(logrus.Fields{"component": "protobuf unmarshal"}).Error(err)
+		w.logger.Errorf("Protobuf unmarshall error: %v", err)
 		return err
 	}
 
 	timestamp, err := ptypes.Timestamp(msg.Timestamp)
 	if err != nil {
-		w.logger.WithFields(logrus.Fields{
-			"component":    "protobuf timestamp",
-			"message_id":   msg.ID,
-			"user_id":      msg.UserID,
-			"tracing_id":   msg.TracingID,
-			"service_name": msg.ServiceName,
-			"template":     msg.TemplateName,
-		}).Error(err)
+		w.logger.Errorf("error: %v, message_id: %d, user_id: %d, tracing_id: %v, service_name: %s, template: %s",
+			err, msg.ID, msg.UserID, msg.TracingID, msg.ServiceName, msg.TemplateName)
 		return err
 	}
 
 	ttl, err := ptypes.Duration(msg.TTL)
 	if err != nil {
-		w.logger.WithFields(logrus.Fields{
-			"component":    "protobuf duration",
-			"message_id":   msg.ID,
-			"user_id":      msg.UserID,
-			"tracing_id":   msg.TracingID,
-			"created_at":   timestamp,
-			"service_name": msg.ServiceName,
-			"template":     msg.TemplateName,
-		}).Error(err)
+		w.logger.Errorf("error: %v, message_id: %d, user_id: %d, tracing_id: %v, service_name: %s, template: %s",
+			err, msg.ID, msg.UserID, msg.TracingID, msg.ServiceName, msg.TemplateName)
 		return err
 	}
 
@@ -142,30 +123,16 @@ func (w mailWorker) Publish(m interfaces.Message) error {
 
 	if time.Now().After(deadline) && ttl > 0 {
 		err = errors.New("message expired")
-		w.logger.WithFields(logrus.Fields{
-			"message_id":   msg.ID,
-			"user_id":      msg.UserID,
-			"tracing_id":   msg.TracingID,
-			"created_at":   timestamp,
-			"ttl":          ttl,
-			"service_name": msg.ServiceName,
-			"template":     msg.TemplateName,
-		}).Error(err)
+		w.logger.Errorf("error: %v, message_id: %d, user_id: %d, tracing_id: %v, created_at: %t, ttl: %v, service_name: %s, template: %s",
+			err, msg.ID, msg.UserID, msg.TracingID, timestamp, ttl, msg.ServiceName, msg.TemplateName)
+
 		return err
 	}
 
 	emailBody, err := w.templColl.Execute(msg.TemplateName, msg.Variables)
 	if err != nil {
-		w.logger.WithFields(logrus.Fields{
-			"component":    "template execute",
-			"message_id":   msg.ID,
-			"user_id":      msg.UserID,
-			"tracing_id":   msg.TracingID,
-			"created_at":   timestamp,
-			"ttl":          ttl,
-			"service_name": msg.ServiceName,
-			"template":     msg.TemplateName,
-		}).Error(err)
+		w.logger.Errorf("error: %v, message_id: %d, user_id: %d, tracing_id: %v, created_at: %t, ttl: %v, service_name: %s, template: %s",
+			err, msg.ID, msg.UserID, msg.TracingID, timestamp, ttl, msg.ServiceName, msg.TemplateName)
 		return err
 	}
 
@@ -197,15 +164,6 @@ func (w mailWorker) Publish(m interfaces.Message) error {
 	)
 	emailMessage.SetDateHeader("X-Date", timestamp)
 
-	fs := logrus.Fields{
-		"message_id":   msg.ID,
-		"user_id":      msg.UserID,
-		"tracing_id":   msg.TracingID,
-		"created_at":   timestamp,
-		"ttl":          ttl,
-		"service_name": msg.ServiceName,
-		"template":     msg.TemplateName,
-	}
-	w.mailChannel <- mailChan{emailMessage, fs}
+	w.mailChannel <- mailChan{emailMessage}
 	return nil
 }

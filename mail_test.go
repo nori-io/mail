@@ -18,13 +18,14 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/nori-io/nori-common/meta"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/nori-io/nori-common/interfaces"
-	"github.com/nori-io/nori-plugins/mail/message"
-	"github.com/nori-io/nori/core/config"
 	"github.com/nori-io/nori/core/plugins"
-	"github.com/nori-io/nori/core/plugins/mocks"
+	"github.com/nori-io/nori-common/mocks"
+
+	"github.com/nori-io/mail/message"
 )
 
 const (
@@ -37,7 +38,7 @@ func TestPackage(t *testing.T) {
 
 	registry := new(mocks.Registry)
 
-	cfg := config.Config
+	cfg :=mocks.Config{}
 	cfg.SetDefault("mail.host", "")
 	cfg.SetDefault("mail.port", 0)
 	cfg.SetDefault("mail.user", "")
@@ -47,19 +48,21 @@ func TestPackage(t *testing.T) {
 	cfg.SetDefault("mail.worker.pool_size", 1)
 
 	registry.On("Config").Return(cfg)
-	registry.On("Logger").Return(config.Log)
 
-	pm := plugins.GetPluginManager(nil)
+	pm := plugins.Manager(nil)
 
-	pm.Load("../plugins")
+	pm.AddFile("../plugins")
 
-	pubsubPlugin := pm.Plugins()["pubsub"].Plugin()
+	pubsubPlugin := meta.Data{ID: meta.ID{
+		ID:      "pubsub",
+		Version: "1.0.0",
+	}}
 	assert.NotNil(pubsubPlugin)
 
 	err := pubsubPlugin.Start(nil, registry)
 	assert.Nil(err)
 
-	pubsub := pubsubPlugin.GetInstance().(interfaces.PubSub)
+	pubsub := pubsubPlugin.Instance().(interfaces.PubSub)
 
 	registry.On("PubSub").Return(pubsub)
 
@@ -111,4 +114,23 @@ func TestPackage(t *testing.T) {
 	err = p.Stop(nil, nil)
 	assert.Nil(err)
 	assert.Nil(p.Instance())
+}
+func pluginPubSub(deps ...meta.Dependency) meta.Meta {
+	data := meta.Data{
+		ID: meta.ID{
+			ID:      "plugin1",
+			Version: "1.0.0",
+		},
+		Core: meta.Core{
+			VersionConstraint: ">=1.0.0, <2.0.0",
+		},
+		Dependencies: []meta.Dependency{
+			{"plugin2", ">=1.0.0, <2.0.0", meta.Custom},
+		},
+		Interface: meta.Custom,
+	}
+	if len(deps) > 0 {
+		data.Dependencies = deps
+	}
+	return data
 }

@@ -22,9 +22,6 @@ import (
 	"github.com/nori-io/nori-common/interfaces"
 	"github.com/nori-io/nori-common/meta"
 	noriPlugin "github.com/nori-io/nori-common/plugin"
-
-	"github.com/sirupsen/logrus"
-
 	"gopkg.in/gomail.v2"
 )
 
@@ -54,8 +51,9 @@ type config struct {
 }
 
 type instance struct {
-	pubsub    interfaces.PubSub
-	logger    *logrus.Logger
+	pubsub interfaces.PubSub
+	//logger    logrus.Logger
+	logger    interfaces.Logger
 	dialer    *gomail.Dialer
 	templColl interfaces.Templates
 	done      chan struct{}
