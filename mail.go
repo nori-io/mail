@@ -19,9 +19,10 @@ import (
 	"time"
 
 	cfg "github.com/nori-io/nori-common/config"
-	"github.com/nori-io/nori-common/interfaces"
+	"github.com/nori-io/nori-common/logger"
 	"github.com/nori-io/nori-common/meta"
 	noriPlugin "github.com/nori-io/nori-common/plugin"
+	"github.com/nori-io/nori-interfaces/interfaces"
 	"gopkg.in/gomail.v2"
 )
 
@@ -51,11 +52,10 @@ type config struct {
 }
 
 type instance struct {
-	pubsub interfaces.PubSub
-	//logger    logrus.Logger
-	logger    interfaces.Logger
+	pubsub    interfaces.PubSub
+	logger    logger.Writer
 	dialer    *gomail.Dialer
-	templColl interfaces.Templates
+	templColl interfaces.Theme
 	done      chan struct{}
 	queueKey  cfg.String
 
@@ -108,11 +108,11 @@ func (p plugin) Meta() meta.Meta {
 		Core: meta.Core{
 			VersionConstraint: ">=1.0.0, <2.0.0",
 		},
-		Dependencies: []meta.Dependency{meta.PubSub.Dependency("1.0.0"), meta.Templates.Dependency("1.0.0")},
+		Dependencies: []meta.Dependency{interfaces.PubSubInterface.Dependency("1.0.0"), interfaces.ThemeInterface.Dependency("1.0.0")},
 		Description: meta.Description{
 			Name: "Nori: Mail",
 		},
-		Interface: meta.Mail,
+		Interface: interfaces.MailInterface,
 		License: meta.License{
 			Title: "",
 			Type:  "GPLv3",
@@ -127,8 +127,8 @@ func (p *plugin) Start(ctx context.Context, registry noriPlugin.Registry) error 
 	if p.instance == nil {
 		dialer := gomail.NewPlainDialer(p.config.host(), p.config.port(), p.config.user(), p.config.password())
 		dialer.SSL = p.config.ssl()
-		pubsub, _ := registry.PubSub()
-		templates, _ := registry.Templates()
+		pubsub, _ := interfaces.GetPubSub(registry)
+		templates, _ := interfaces.GetTheme(registry)
 		instance := &instance{
 			queueKey:       p.config.queueKey,
 			beforeSend:     make([]func(interface{}), 0),

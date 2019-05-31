@@ -21,9 +21,9 @@ import (
 	"github.com/nori-io/nori-common/meta"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/nori-io/nori-common/interfaces"
-	"github.com/nori-io/nori/core/plugins"
 	"github.com/nori-io/nori-common/mocks"
+	"github.com/nori-io/nori-interfaces/interfaces"
+	"github.com/nori-io/nori/core/plugins"
 
 	"github.com/nori-io/mail/message"
 )
@@ -38,7 +38,7 @@ func TestPackage(t *testing.T) {
 
 	registry := new(mocks.Registry)
 
-	cfg :=mocks.Config{}
+	cfg := mocks.Config{}
 	cfg.SetDefault("mail.host", "")
 	cfg.SetDefault("mail.port", 0)
 	cfg.SetDefault("mail.user", "")
@@ -53,10 +53,8 @@ func TestPackage(t *testing.T) {
 
 	pm.AddFile("../plugins")
 
-	pubsubPlugin := meta.Data{ID: meta.ID{
-		ID:      "pubsub",
-		Version: "1.0.0",
-	}}
+	pubsubPlugin := new(mocks.Plugin)
+	pubsubPlugin.Meta()
 	assert.NotNil(pubsubPlugin)
 
 	err := pubsubPlugin.Start(nil, registry)

@@ -18,17 +18,18 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/nori-io/nori-common/logger"
 	"gopkg.in/gomail.v2"
 
-	"github.com/nori-io/nori-common/interfaces"
+	"github.com/nori-io/nori-interfaces/interfaces"
 
 	"github.com/nori-io/mail/message"
 )
 
 type mailWorker struct {
 	mailChannel chan mailChan
-	templColl   interfaces.Templates
-	logger      interfaces.Logger
+	templColl   interfaces.Theme
+	logger      logger.Writer
 	cfg         config
 }
 
@@ -129,7 +130,7 @@ func (w mailWorker) Publish(m interfaces.Message) error {
 		return err
 	}
 
-	emailBody, err := w.templColl.Execute(msg.TemplateName, msg.Variables)
+	emailBody, err := w.templColl.Exec(msg.TemplateName, msg.Variables)
 	if err != nil {
 		w.logger.Errorf("error: %v, message_id: %d, user_id: %d, tracing_id: %v, created_at: %t, ttl: %v, service_name: %s, template: %s",
 			err, msg.ID, msg.UserID, msg.TracingID, timestamp, ttl, msg.ServiceName, msg.TemplateName)
