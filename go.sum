@@ -52,10 +52,10 @@ github.com/mitchellh/mapstructure v0.0.0-20160808181253-ca63d7c062ee/go.mod h1:F
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/nori-io/nori v0.0.0-20190526164041-4a7b463e3068 h1:+cStHBCoTh1FbfJYe/G7CtM/a1t5Ec6a3+q+usxRh5E=
 github.com/nori-io/nori v0.0.0-20190526164041-4a7b463e3068/go.mod h1:DOD8zRAFKLONzVNjp14oRkxs+9PAG3Uu73QWbFYvtnc=
-github.com/nori-io/nori-common v1.0.0 h1:UbEkdGHPwNncBcZsgXjB2tyWhzcwLIw1MidMJld//sY=
-github.com/nori-io/nori-common v1.0.0/go.mod h1:OhwkUGGfxuZCuuxHgBq8I5VA9BeBCRGZnuS45JweUvk=
-github.com/nori-io/nori-interfaces v1.0.0 h1:N9vYF7ndsJu15i99RiYE9w2G4NUQLwLK8fw6+WQByLY=
-github.com/nori-io/nori-interfaces v1.0.0/go.mod h1:8VBe1F2cVl4nvu4Tf9l8mx5KYKL/3phSVCn390wSptk=
+github.com/nori-io/nori-common v1.0.1 h1:ysBzqCYh9gJKYgZ3RF+0erbX7Gnd+SXCwsWD3gj8ujc=
+github.com/nori-io/nori-common v1.0.1/go.mod h1:OhwkUGGfxuZCuuxHgBq8I5VA9BeBCRGZnuS45JweUvk=
+github.com/nori-io/nori-interfaces v1.0.2 h1:/GN/ymw1amIvx72jLWfxWSiSp5wB90Qhg3b6bKFic6I=
+github.com/nori-io/nori-interfaces v1.0.2/go.mod h1:OtUnww3NNkLlFynXXv8kBMtgRsZ60c8Mr+fQQ1Ti18o=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-toml v1.4.0 h1:u3Z1r+oOXJIkxqw34zVhyPgjBsm6X2wn21NWs/HfSeg=
 github.com/pelletier/go-toml v1.4.0/go.mod h1:PN7xzY2wHTK0K9p34ErDQMlFxa51Fk0OUruD3k1mMwo=
