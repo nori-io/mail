@@ -68,14 +68,13 @@ func (i instance) newWorkerService(cfg config) *mailWorker {
 					var count int = 1
 					for sender == nil {
 						sender, err = i.dialer.Dial()
-						i.logger.Info("Connection open")
 						if err != nil {
 							if count <= 5 {
-								worker.logger.Errorf("attempt number = %d, %v", count, err)
 								count++
 								time.Sleep(3 * time.Second)
 							} else {
-								worker.logger.Error(err)
+								// todo: onDeliveryError
+								worker.logger.Errorf("attempt number = %d, %v", count, err)
 							}
 						}
 					}

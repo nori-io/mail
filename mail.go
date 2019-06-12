@@ -59,10 +59,11 @@ type instance struct {
 	done      chan struct{}
 	queueKey  cfg.String
 
-	beforeSend     []func(interface{})
-	afterSend      []func(interface{})
-	beforeDelivery []func(interface{})
-	afterDelivery  []func(interface{})
+	beforeSend      []func(interface{})
+	afterSend       []func(interface{})
+	beforeDelivery  []func(interface{})
+	afterDelivery   []func(interface{})
+	onDeliveryError []func(interface{})
 
 	sync.Mutex
 }
@@ -108,7 +109,10 @@ func (p plugin) Meta() meta.Meta {
 		Core: meta.Core{
 			VersionConstraint: ">=1.0.0, <2.0.0",
 		},
-		Dependencies: []meta.Dependency{interfaces.PubSubInterface.Dependency("1.0.0"), interfaces.ThemeInterface.Dependency("1.0.0")},
+		Dependencies: []meta.Dependency{
+			interfaces.PubSubInterface.Dependency(),
+			interfaces.ThemeInterface.Dependency(),
+		},
 		Description: meta.Description{
 			Name: "Nori: Mail",
 		},
@@ -125,7 +129,7 @@ func (p plugin) Meta() meta.Meta {
 
 func (p *plugin) Start(ctx context.Context, registry noriPlugin.Registry) error {
 	if p.instance == nil {
-		dialer := gomail.NewPlainDialer(p.config.host(), p.config.port(), p.config.user(), p.config.password())
+		dialer := gomail.NewDialer(p.config.host(), p.config.port(), p.config.user(), p.config.password())
 		dialer.SSL = p.config.ssl()
 		pubsub, _ := interfaces.GetPubSub(registry)
 		templates, _ := interfaces.GetTheme(registry)
@@ -201,6 +205,12 @@ func (i *instance) RegisterBeforeDelivery(f func(interface{})) {
 func (i *instance) RegisterAfterDelivery(f func(interface{})) {
 	i.Lock()
 	i.afterDelivery = append(i.afterDelivery, f)
+	i.Unlock()
+}
+
+func (i *instance) RegisterOnDeliveryError(f func(interface{})) {
+	i.Lock()
+	i.onDeliveryError = append(i.onDeliveryError, f)
 	i.Unlock()
 }
 
